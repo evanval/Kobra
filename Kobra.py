@@ -1,14 +1,13 @@
 #Code is semi aided by GeeksForGeeks (included in resources for this project) and CodePulse (also in class resources)
 
-##################################
-#CONSTANTS
-##################################
+
+#CONSTANT
+
 
 DIGITS = '01234567890'
 
-##################################
 #ERRORS
-##################################
+
 
 class Error:
     def __init__(self, pos_start, pos_end, error_name, details):
@@ -36,9 +35,9 @@ class RTError(Error):
 
 
 
-##################################
+
 #POSITION
-##################################
+
 
 class Position:
     def __init__(self, idx, ln, col, fn, ftxt):
@@ -58,9 +57,9 @@ class Position:
         return self
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
-##################################
+
 #TOKENS
-##################################
+
 TT_INT = 'INT'
 TT_FLOAT = 'FLOAT'
 TT_PLUS = 'PLUS'
@@ -73,6 +72,7 @@ TT_EOF = 'EOF'
 TT_STRING = 'STRING'
 TT_IDENTIFIER = 'IDENTIFIER'
 TT_ASSIGN = 'ASSIGN'
+TT_EQ = 'EQ'
 
 
 class Token:
@@ -92,9 +92,9 @@ class Token:
         if self.value: return f'{self.type}:{self.value}'
         return f'{self.type}'
     
-##################################
+
 #LEXER
-##################################
+
 class Lexer:
     def __init__(self, fn, text):
         self.fn = fn
@@ -138,7 +138,7 @@ class Lexer:
                 tokens.append(Token(TT_RPAREN, pos_start=self.pos))
                 self.advance()
             elif self.current_char == '=':
-                tokens.append(Token(TT_ASSIGN, pos_start=self.pos))
+                tokens.append(Token(TT_EQ, pos_start=self.pos))
                 self.advance()
             elif self.current_char.isalpha() or self.current_char == '_':
                 tokens.append(self.make_identifier())
@@ -199,9 +199,9 @@ class Lexer:
 
 
 
-##################################
+
 #NODES
-##################################
+
 
 class NumberNode:
     def __init__(self, tok):
@@ -243,9 +243,9 @@ class UnaryOpNode:
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'
 
-##################################
+
 #PARSE RESULT
-##################################
+
 
 class ParseResult:
     def __init__(self):
@@ -267,9 +267,9 @@ class ParseResult:
         return self
 
 
-##################################
+
 #PARSER
-##################################
+
 
 class Parser:
     def __init__(self, tokens):
@@ -365,7 +365,7 @@ class Parser:
             var_name = self.current_tok.value
             res.register(self.advance())  # Move past the identifier
 
-            if self.current_tok.type == TT_ASSIGN:
+            if self.current_tok.type == TT_EQ:
                 res.register(self.advance())  # Move past the '='
                 expr = res.register(self.expr())
                 if res.error: return res
@@ -380,9 +380,8 @@ class Parser:
 
 
 
-##################################
+
 #VARIABLE ASSIGNMENT
-##################################
 
 class VarAssignNode:
     def __init__(self, var_name, expr):
@@ -395,9 +394,8 @@ class VarAssignNode:
         return f'({self.var_name} = {self.expr})'
 
 
-##################################
+
 #RUNTIME RESULT
-##################################
 
 class RTResult:
     def __init__(self):
@@ -415,9 +413,8 @@ class RTResult:
         self.error = error
         return self
 
-##################################
+
 #VALUES
-##################################
 
 class Number:
     def __init__(self, value):
@@ -448,9 +445,8 @@ class Number:
     def __repr__(self):
         return str(self.value)
 
-##################################
+
 #INTERPRETER
-##################################
 
 class Interpreter:
     def __init__(self):
@@ -545,9 +541,8 @@ class String:
         return f'"{self.value}"'
 
 
-##################################
 #SYMBOL TABLE
-##################################
+
 class SymbolTable:
     def __init__(self):
         self.symbols = {}
@@ -561,9 +556,8 @@ class SymbolTable:
         self.symbols[var_name] = value
 
 
-##################################
 #VARIABLE ACCESS
-##################################
+
 class VarAccessNode:
     def __init__(self, var_name, pos_start, pos_end):
         self.var_name = var_name
@@ -575,11 +569,10 @@ class VarAccessNode:
 
 
 
-##################################
-#RUN
-##################################
 
-def run(fn, text):
+#RUN
+
+def run(fn, text, interpreter):
     lexer = Lexer(fn, text)
     tokens, error = lexer.make_tokens()
     if error: return None, error
@@ -589,7 +582,7 @@ def run(fn, text):
     ast = parser.parse()
     if ast.error: return None, ast.error
 
-    interpreter = Interpreter()
+    
     result = interpreter.visit(ast.node)
 
     return result.value, result.error
