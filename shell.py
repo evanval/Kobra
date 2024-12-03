@@ -2,12 +2,25 @@
 
 import Kobra
 
-while True:
-    text = input('Kobra > ')
-    result, error = Kobra.run('<stdin>', text)
 
+interpreter = Kobra.Interpreter()
+
+while True:
+   
+    text = input("Kobra > ")
+    
+    if text.strip().lower() == "exit":
+        break  
+    
+    
+    result, error = Kobra.run('<stdin>', text, interpreter)
+    
     if error:
-        print(error.as_string())
-    else:
-        # Access and print the value from the RTResult object
-        print(result.value)
+        print(error)
+    elif result:
+       
+        print(result.value if hasattr(result, 'value') else result)
+
+
+
+
