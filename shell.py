@@ -1,4 +1,6 @@
 #Code is semi aided by GeeksForGeeks (included in resources for this project) and CodePulse (also in class resources)
+#By Evan Valenti
+#For CSC-333-101 Final Project: Create a Programming Language
 
 import Kobra
 
