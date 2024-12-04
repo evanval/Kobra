@@ -1,4 +1,6 @@
 #Code is semi aided by GeeksForGeeks (included in resources for this project) and CodePulse (also in class resources)
+#By Evan Valenti
+#For CSC-333-101 Final Project: Create a Programming Language
 
 
 #CONSTANT
@@ -73,6 +75,12 @@ TT_STRING = 'STRING'
 TT_IDENTIFIER = 'IDENTIFIER'
 TT_ASSIGN = 'ASSIGN'
 TT_EQ = 'EQ'
+TT_VAR = 'VAR'
+TT_LN = 'LN'
+
+KEYWORDS = {
+    'ln' : TT_LN,
+}
 
 
 class Token:
@@ -109,7 +117,7 @@ class Lexer:
 
     def make_tokens(self):
         tokens = []
-
+        error = None
         while self.current_char != None:
             if self.current_char in ' \t':
                 self.advance()
@@ -138,10 +146,22 @@ class Lexer:
                 tokens.append(Token(TT_RPAREN, pos_start=self.pos))
                 self.advance()
             elif self.current_char == '=':
-                tokens.append(Token(TT_EQ, pos_start=self.pos))
+                tokens.append(Token(TT_ASSIGN, pos_start=self.pos))
                 self.advance()
             elif self.current_char.isalpha() or self.current_char == '_':
-                tokens.append(self.make_identifier())
+                identifier = self.make_identifier()
+                if identifier.value == "ln":
+                    tokens.append(Token(TT_LN, "ln", pos_start=self.pos))
+                else:
+                    tokens.append(identifier)
+            elif self.current_char == 'v':
+                if self.text[self.pos.idx:self.pos.idx+3] == 'var':
+                    tokens.append(Token(TT_VAR, 'var', pos_start=self.pos))
+                    self.advance()
+                    self.advance()
+                    self.advance()
+                else:
+                    tokens.append(self.make_identifier())
             else:
                 pos_start = self.pos.copy()
                 char = self.current_char
@@ -149,7 +169,7 @@ class Lexer:
                 return [], IllegalCharError(pos_start, self.pos, "'" + char + "'")
         
         tokens.append(Token(TT_EOF, pos_start=self.pos))
-        return tokens, None
+        return tokens, error
 
     def make_string(self, quote_type):
         string = ''
@@ -297,7 +317,20 @@ class Parser:
         res = ParseResult()
         tok = self.current_tok
 
-        if tok.type in (TT_PLUS, TT_MINUS):
+        if tok.type == TT_LN:
+            res = ParseResult()
+            self.advance()
+            if self.current_tok.type!= TT_LPAREN:
+                return res.failure(SyntaxError("Expected '(' after 'ln'"))
+            self.advance()
+            expr = res.register(self.expr())
+            if res.error: return res
+            if self.current_tok.type != TT_RPAREN:
+                return res.failure(SyntaxError("Expected ')' after expression"))
+            self.advance()
+            return res.success(UnaryOpNode(tok, expr))
+
+        elif tok.type in (TT_PLUS, TT_MINUS):
             res.register(self.advance())
             factor = res.register(self.factor())
             if res.error: return res
@@ -365,12 +398,18 @@ class Parser:
             var_name = self.current_tok.value
             res.register(self.advance())  # Move past the identifier
 
-            if self.current_tok.type == TT_EQ:
+            if self.current_tok.type == TT_ASSIGN:
                 res.register(self.advance())  # Move past the '='
                 expr = res.register(self.expr())
                 if res.error: return res
                 return res.success(VarAssignNode(var_name, expr))
-
+            elif self.current_tok.type == TT_VAR:
+                res.register(self.advance())
+                if self.current_tok.type == TT_ASSIGN:
+                    res.register(self.advance())
+                    expr = res.register(self.expr())
+                    if res.error: return res
+                    return res.success(VarAssignNode(var_name, expr))
     
 # parse as expresssion
         expr = res.register(self.expr())
@@ -447,6 +486,7 @@ class Number:
 
 
 #INTERPRETER
+import math
 
 class Interpreter:
     def __init__(self):
@@ -520,6 +560,12 @@ class Interpreter:
 
         if node.op_tok.type == TT_MINUS:
             number, error = number.multed_by(Number(-1))
+        
+        elif node.op_tok.type == TT_LN:
+            if number.value <= 0:
+                return res.failure(RTError(node.pos_start, node.pos_end, "Logarithm undefined for non-positive values"))
+            result = Number(math.log(number.value))
+            return res.success(result.set_pos(node.pos_start, node.pos_end))
 
         if error:
             return res.failure(error)
